@@ -30,15 +30,40 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        retries: 3
+        enable.idempotence: true
+        acks: all
     consumer:
       group-id: syncdocs-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: com.syncdocs.*
+        spring.json.type.mapping: event:com.syncdocs.events.KafkaDocumentEvent
+    listener:
+      concurrency: 3
+      missing-topics-fatal: false
 
 server:
   port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env,loggers
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+  health:
+    db:
+      enabled: true
+    kafka:
+      enabled: true
+    minio:
+      enabled: true
 
 minio:
   url: ${MINIO_URL:http://localhost:9000}

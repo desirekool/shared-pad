@@ -11,6 +11,7 @@ import com.syncdocs.model.enums.PermissionLevel;
 import com.syncdocs.repository.DocumentPermissionRepository;
 import com.syncdocs.repository.DocumentRepository;
 import com.syncdocs.repository.UserRepository;
+import com.syncdocs.service.AuditService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,7 @@ public class PermissionController {
     private final DocumentRepository documentRepository;
     private final DocumentPermissionRepository permissionRepository;
     private final UserRepository userRepository;
+    private final AuditService auditService;
 
     private User getUser(Authentication auth) {
         return userRepository.findByUsername(auth.getName())
@@ -103,6 +105,9 @@ public class PermissionController {
                         .build());
             }
 
+            auditService.logDocumentEvent("PERMISSION_CHANGED", currentUser.getUsername(),
+                    documentId, "Shared with " + request.getUsername() + " as " + request.getPermissionLevel());
+
             return ResponseEntity.ok(new ErrorResponse(200, "Shared with " + request.getUsername()));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(400, e.getMessage()));
@@ -126,6 +131,9 @@ public class PermissionController {
                     .orElseThrow(() -> new RuntimeException("Permission not found"));
 
             permissionRepository.delete(perm);
+
+            auditService.logDocumentEvent("PERMISSION_REVOKED", currentUser.getUsername(),
+                    documentId, "Revoked access from " + targetUser.getUsername());
 
             return ResponseEntity.ok(new ErrorResponse(200, "Access revoked from " + targetUser.getUsername()));
         } catch (RuntimeException e) {

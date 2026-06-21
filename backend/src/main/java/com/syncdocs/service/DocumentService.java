@@ -30,6 +30,7 @@ public class DocumentService {
     private final DocumentPermissionRepository permissionRepository;
     private final MinioService minioService;
     private final VersionHistoryService versionHistoryService;
+    private final AuditService auditService;
 
     private String sha256(byte[] data) {
         try {
@@ -85,6 +86,9 @@ public class DocumentService {
         versionHistoryService.recordVersion(document.getId(), document.getVersion(),
                 owner.getUsername(), "Initial version");
 
+        auditService.logDocumentEvent("DOCUMENT_CREATED", owner.getUsername(),
+                document.getId(), "Created: " + document.getTitle());
+
         return toResponse(document, request.getContent());
     }
 
@@ -138,6 +142,9 @@ public class DocumentService {
 
         String permissionLevel = resolvePermissionLevel(document, user);
 
+        auditService.logDocumentEvent("DOCUMENT_OPENED", user.getUsername(),
+                document.getId(), "Opened: " + document.getTitle());
+
         return toResponse(document, contentStr, permissionLevel);
     }
 
@@ -154,8 +161,11 @@ public class DocumentService {
 
         checkPermission(document, user, PermissionLevel.EDITOR);
 
-        if (request.getTitle() != null) {
+        if (request.getTitle() != null && !request.getTitle().equals(document.getTitle())) {
+            String oldTitle = document.getTitle();
             document.setTitle(request.getTitle());
+            auditService.logDocumentEvent("DOCUMENT_RENAMED", user.getUsername(),
+                    document.getId(), "Renamed from '" + oldTitle + "' to '" + request.getTitle() + "'");
         }
 
         document = documentRepository.save(document);
@@ -174,6 +184,9 @@ public class DocumentService {
 
             versionHistoryService.recordVersion(document.getId(), document.getVersion(),
                     user.getUsername(), "Saved: " + document.getTitle());
+
+            auditService.logDocumentEvent("DOCUMENT_SAVED", user.getUsername(),
+                    document.getId(), "Version " + document.getVersion() + " saved");
         }
 
         String content = request.getContent();
@@ -195,6 +208,9 @@ public class DocumentService {
 
         document.setStatus(DocumentStatus.DELETED);
         documentRepository.save(document);
+
+        auditService.logDocumentEvent("DOCUMENT_DELETED", user.getUsername(),
+                document.getId(), "Deleted: " + document.getTitle());
     }
 
     public byte[] download(Long id, User user) {
@@ -204,7 +220,12 @@ public class DocumentService {
         checkPermission(document, user, PermissionLevel.VIEWER);
 
         String objectKey = generateObjectKey(document.getId(), document.getVersion());
-        return minioService.getObject(objectKey);
+        byte[] data = minioService.getObject(objectKey);
+
+        auditService.logDocumentEvent("DOCUMENT_DOWNLOADED", user.getUsername(),
+                document.getId(), "Downloaded: " + document.getTitle());
+
+        return data;
     }
 
     @Transactional
@@ -234,6 +255,9 @@ public class DocumentService {
 
         versionHistoryService.recordVersion(document.getId(), document.getVersion(),
                 user.getUsername(), "Uploaded: " + title);
+
+        auditService.logDocumentEvent("DOCUMENT_UPLOADED", user.getUsername(),
+                document.getId(), "Uploaded: " + title);
 
         return toResponse(document, new String(content, StandardCharsets.UTF_8));
     }

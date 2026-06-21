@@ -21,6 +21,7 @@ public class VersionHistoryService {
     private final DocumentVersionRepository versionRepository;
     private final DocumentRepository documentRepository;
     private final MinioService minioService;
+    private final AuditService auditService;
 
     @Transactional
     public void recordVersion(Long documentId, Long versionNumber, String createdBy, String message) {
@@ -57,6 +58,9 @@ public class VersionHistoryService {
 
         recordVersion(documentId, newVersion, requestedBy,
                 "Restored from version " + versionNumber);
+
+        auditService.logDocumentEvent("VERSION_RESTORED", requestedBy, documentId,
+                "Restored version " + versionNumber + " as version " + newVersion);
 
         return DocumentResponse.builder()
                 .id(document.getId())

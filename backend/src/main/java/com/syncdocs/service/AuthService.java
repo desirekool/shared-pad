@@ -27,6 +27,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final AuditService auditService;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -50,6 +51,8 @@ public class AuthService {
 
         String token = jwtTokenProvider.generateToken(user.getUsername());
 
+        auditService.logEvent("USER_REGISTERED", user.getUsername(), "User registered");
+
         return AuthResponse.builder()
                 .token(token)
                 .username(user.getUsername())
@@ -67,6 +70,8 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         String token = jwtTokenProvider.generateToken(user.getUsername());
+
+        auditService.logEvent("USER_LOGIN", user.getUsername(), "User logged in");
 
         return AuthResponse.builder()
                 .token(token)
