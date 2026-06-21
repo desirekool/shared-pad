@@ -1,18 +1,23 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Link } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
+import DocumentList from "./pages/docs/DocumentList";
+import DocumentEditor from "./pages/docs/DocumentEditor";
 
 function Home() {
   const { user, logout } = useAuth();
   return (
     <div>
-      <h1>SyncDocs - Collaborative Document Editor</h1>
+      <h1>SyncDocs</h1>
       {user && (
         <div>
           <p>Welcome, {user.username}!</p>
-          <button onClick={logout}>Logout</button>
+          <nav>
+            <Link to="/docs">My Documents</Link> |{" "}
+            <button onClick={logout}>Logout</button>
+          </nav>
         </div>
       )}
     </div>
@@ -37,6 +42,22 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Home />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/docs"
+        element={
+          <ProtectedRoute>
+            <DocumentList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/docs/:id"
+        element={
+          <ProtectedRoute>
+            <DocumentEditor />
           </ProtectedRoute>
         }
       />
