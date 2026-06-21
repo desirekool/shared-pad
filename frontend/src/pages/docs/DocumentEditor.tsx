@@ -13,7 +13,26 @@ export default function DocumentEditor() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const applyOpRef = useRef<((op: EditorOperation) => void) | null>(null);
-  const versionRef = useRef(1);
+
+  const fetchDoc = useCallback(() => {
+    if (!id || id === "new") return;
+    getDocument(Number(id))
+      .then((d) => {
+        setDoc(d);
+        setTitle(d.title);
+        setContent(d.content || "");
+      })
+      .catch((e) => setError(e.message));
+  }, [id]);
+
+  useEffect(() => {
+    fetchDoc();
+  }, [fetchDoc]);
+
+  const handleRejected = useCallback(() => {
+    setError("Edit rejected due to version conflict. Re-fetching...");
+    fetchDoc();
+  }, [fetchDoc]);
 
   const handleRemoteOp = useCallback((op: EditorOperation) => {
     applyOpRef.current?.(op);
@@ -21,8 +40,9 @@ export default function DocumentEditor() {
 
   const { sendOperation, setApplyOp } = useDocumentSync({
     documentId: id || "new",
-    version: doc?.version || 1,
+    version: doc?.version || 0,
     onRemoteOperation: handleRemoteOp,
+    onRejected: handleRejected,
   });
 
   useEffect(() => {
@@ -31,22 +51,9 @@ export default function DocumentEditor() {
     });
   }, [setApplyOp]);
 
-  useEffect(() => {
-    if (!id || id === "new") return;
-    getDocument(Number(id))
-      .then((d) => {
-        setDoc(d);
-        setTitle(d.title);
-        setContent(d.content || "");
-        versionRef.current = d.version;
-      })
-      .catch((e) => setError(e.message));
-  }, [id]);
-
   const handleOperation = useCallback(
     (op: EditorOperation) => {
-      versionRef.current += 1;
-      sendOperation({ ...op, version: versionRef.current });
+      sendOperation(op);
     },
     [sendOperation]
   );
@@ -57,7 +64,6 @@ export default function DocumentEditor() {
     try {
       const updated = await updateDocument(doc.id, { title, content });
       setDoc(updated);
-      versionRef.current = updated.version;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {

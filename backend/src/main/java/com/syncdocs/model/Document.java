@@ -38,6 +38,7 @@ public class Document {
     @Builder.Default
     private DocumentStatus status = DocumentStatus.ACTIVE;
 
+    @Version
     @Column(nullable = false)
     @Builder.Default
     private Long version = 0L;

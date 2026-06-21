@@ -58,7 +58,7 @@ public class DocumentService {
                 .contentHash(hash)
                 .mimeType(mimeType)
                 .size((long) content.length)
-                .version(1L)
+                .version(0L)
                 .build();
 
         document = documentRepository.save(document);
@@ -93,7 +93,7 @@ public class DocumentService {
                 .originalLastModified(request.getOriginalLastModified() != null
                         ? Instant.parse(request.getOriginalLastModified()) : null)
                 .importedAt(Instant.now())
-                .version(1L)
+                .version(0L)
                 .build();
 
         document = documentRepository.save(document);
@@ -140,19 +140,20 @@ public class DocumentService {
             document.setTitle(request.getTitle());
         }
 
+        document = documentRepository.save(document);
+
         if (request.getContent() != null) {
             byte[] content = request.getContent().getBytes(StandardCharsets.UTF_8);
             String hash = sha256(content);
 
-            document.setVersion(document.getVersion() + 1);
             document.setContentHash(hash);
             document.setSize((long) content.length);
 
             String objectKey = generateObjectKey(document.getId(), document.getVersion());
             minioService.putObject(objectKey, content, document.getMimeType());
-        }
 
-        document = documentRepository.save(document);
+            document = documentRepository.save(document);
+        }
 
         String content = request.getContent();
         if (content == null) {
@@ -196,7 +197,7 @@ public class DocumentService {
                 .contentHash(hash)
                 .mimeType(mt)
                 .size((long) content.length)
-                .version(1L)
+                .version(0L)
                 .build();
 
         document = documentRepository.save(document);

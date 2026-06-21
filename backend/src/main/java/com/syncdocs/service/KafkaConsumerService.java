@@ -1,11 +1,14 @@
 package com.syncdocs.service;
 
 import com.syncdocs.events.KafkaDocumentEvent;
+import com.syncdocs.events.OperationResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -13,11 +16,32 @@ import org.springframework.stereotype.Service;
 public class KafkaConsumerService {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final ConflictResolutionService conflictResolutionService;
 
     @KafkaListener(topics = "document.edit", groupId = "syncdocs-group")
     public void handleEditEvent(KafkaDocumentEvent event) {
-        log.debug("Edit event: doc={} user={}", event.getDocumentId(), event.getUserId());
-        broadcast(event, "/topic/document." + event.getDocumentId());
+        String docId = event.getDocumentId();
+        String userId = event.getUserId();
+        Map<String, Object> payload = event.getPayload();
+
+        long operationVersion = payload.get("version") instanceof Number
+                ? ((Number) payload.get("version")).longValue() : 0;
+
+        boolean accepted = conflictResolutionService.validateEdit(docId, operationVersion);
+
+        if (accepted) {
+            log.debug("Edit accepted: doc={} user={} version={}", docId, userId, operationVersion);
+            broadcast(event, "/topic/document." + docId);
+        } else {
+            log.warn("Edit rejected (stale): doc={} user={} version={}", docId, userId, operationVersion);
+            OperationResult rejection = OperationResult.builder()
+                    .documentId(docId)
+                    .userId(userId)
+                    .accepted(false)
+                    .reason("Stale version. Re-fetch document and retry.")
+                    .build();
+            messagingTemplate.convertAndSendToUser(userId, "/queue/errors", rejection);
+        }
     }
 
     @KafkaListener(topics = "document.save", groupId = "syncdocs-group")

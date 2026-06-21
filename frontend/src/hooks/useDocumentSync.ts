@@ -7,9 +7,10 @@ interface UseDocumentSyncOptions {
   documentId: string;
   version: number;
   onRemoteOperation?: (op: EditorOperation) => void;
+  onRejected?: () => void;
 }
 
-export function useDocumentSync({ documentId, version, onRemoteOperation }: UseDocumentSyncOptions) {
+export function useDocumentSync({ documentId, version, onRemoteOperation, onRejected }: UseDocumentSyncOptions) {
   const versionRef = useRef(version);
   const applyOpRef = useRef<((op: EditorOperation) => void) | null>(null);
 
@@ -42,12 +43,29 @@ export function useDocumentSync({ documentId, version, onRemoteOperation }: UseD
     [onRemoteOperation]
   );
 
-  const { subscribe, unsubscribe, publish, joinDocument, leaveDocument } = useWebSocket({
+  const handleError = useCallback(
+    (message: IMessage) => {
+      try {
+        const result = JSON.parse(message.body);
+        if (result.accepted === false) {
+          console.warn("Edit rejected by server:", result.reason);
+          onRejected?.();
+        }
+      } catch (e) {
+        console.error("Failed to parse error message:", e);
+      }
+    },
+    [onRejected]
+  );
+
+  const { subscribe, publish, joinDocument, leaveDocument, unsubscribe } = useWebSocket({
     onConnect: () => {
       subscribe(`/topic/document.${documentId}`, handleMessage);
+      subscribe("/user/queue/errors", handleError);
       joinDocument(documentId);
     },
     onDisconnect: () => {
+      unsubscribe("/user/queue/errors");
       leaveDocument(documentId);
     },
   });
