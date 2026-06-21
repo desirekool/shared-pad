@@ -11,7 +11,12 @@ spring:
     password: ${DB_PASSWORD:syncdocs}
     driver-class-name: org.postgresql.Driver
 
+  sql:
+    init:
+      mode: always
+
   jpa:
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: validate
     show-sql: false
