@@ -7,6 +7,7 @@ import { usePresence } from "../../hooks/usePresence";
 import PresenceBar from "../../components/PresenceBar";
 import VersionPanel from "../../components/VersionPanel";
 import ShareDialog from "../../components/ShareDialog";
+import { getQueueCount } from "../../utils/offlineQueue";
 
 export default function DocumentEditor() {
   const { id } = useParams<{ id: string }>();
@@ -57,12 +58,24 @@ export default function DocumentEditor() {
     applyOpRef.current?.(op);
   }, []);
 
-  const { sendOperation, setApplyOp } = useDocumentSync({
+  const { sendOperation, setApplyOp, isConnected } = useDocumentSync({
     documentId: id || "new",
     version: doc?.version || 0,
     onRemoteOperation: handleRemoteOp,
     onRejected: handleRejected,
   });
+
+  const [queuedCount, setQueuedCount] = useState(0);
+
+  useEffect(() => {
+    if (!isConnected) {
+      const interval = setInterval(() => {
+        setQueuedCount(getQueueCount(id || "new"));
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+    setQueuedCount(0);
+  }, [isConnected, id]);
 
   useEffect(() => {
     setApplyOp((op: EditorOperation) => {
@@ -124,6 +137,11 @@ export default function DocumentEditor() {
         {isReadOnly && (
           <span style={{ fontSize: 12, color: "#c00", padding: "2px 8px", background: "#fee", borderRadius: 4 }}>
             Read-only
+          </span>
+        )}
+        {!isConnected && (
+          <span style={{ fontSize: 12, color: "#a50", padding: "2px 8px", background: "#ff8", borderRadius: 4 }}>
+            Offline{queuedCount > 0 ? ` (${queuedCount})` : ""}
           </span>
         )}
       </div>

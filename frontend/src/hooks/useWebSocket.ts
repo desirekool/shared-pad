@@ -38,24 +38,34 @@ interface UseWebSocketOptions {
 
 export function useWebSocket(options?: UseWebSocketOptions) {
   const subscriptionsRef = useRef<Map<string, Subscription>>(new Map());
-  const [, setConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     sharedRefCount++;
 
-    if (options?.onConnect) connectCallbacks.add(options.onConnect);
-    if (options?.onDisconnect) disconnectCallbacks.add(options.onDisconnect);
+    const handleConnect = () => {
+      setIsConnected(true);
+      options?.onConnect?.();
+    };
+
+    const handleDisconnect = () => {
+      setIsConnected(false);
+      options?.onDisconnect?.();
+    };
+
+    connectCallbacks.add(handleConnect);
+    disconnectCallbacks.add(handleDisconnect);
 
     const client = getClient();
     if (client.connected) {
-      setConnected(true);
+      setIsConnected(true);
       options?.onConnect?.();
     }
 
     return () => {
       sharedRefCount--;
-      if (options?.onConnect) connectCallbacks.delete(options.onConnect);
-      if (options?.onDisconnect) disconnectCallbacks.delete(options.onDisconnect);
+      connectCallbacks.delete(handleConnect);
+      disconnectCallbacks.delete(handleDisconnect);
 
       subscriptionsRef.current.forEach((sub) => sub.unsubscribe());
       subscriptionsRef.current.clear();
@@ -134,5 +144,6 @@ export function useWebSocket(options?: UseWebSocketOptions) {
     publish,
     joinDocument,
     leaveDocument,
+    isConnected,
   };
 }
