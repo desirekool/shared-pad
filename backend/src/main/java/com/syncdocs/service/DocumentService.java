@@ -29,6 +29,7 @@ public class DocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentPermissionRepository permissionRepository;
     private final MinioService minioService;
+    private final VersionHistoryService versionHistoryService;
 
     private String sha256(byte[] data) {
         try {
@@ -72,6 +73,9 @@ public class DocumentService {
                 .permissionLevel(PermissionLevel.OWNER)
                 .build());
 
+        versionHistoryService.recordVersion(document.getId(), document.getVersion(),
+                owner.getUsername(), "Initial version");
+
         return toResponse(document, request.getContent());
     }
 
@@ -106,6 +110,9 @@ public class DocumentService {
                 .user(user)
                 .permissionLevel(PermissionLevel.OWNER)
                 .build());
+
+        versionHistoryService.recordVersion(document.getId(), document.getVersion(),
+                user.getUsername(), "Imported from: " + request.getOriginalFilename());
 
         return toResponse(document, request.getContent());
     }
@@ -153,6 +160,9 @@ public class DocumentService {
             minioService.putObject(objectKey, content, document.getMimeType());
 
             document = documentRepository.save(document);
+
+            versionHistoryService.recordVersion(document.getId(), document.getVersion(),
+                    user.getUsername(), "Saved: " + document.getTitle());
         }
 
         String content = request.getContent();
@@ -210,6 +220,9 @@ public class DocumentService {
                 .user(user)
                 .permissionLevel(PermissionLevel.OWNER)
                 .build());
+
+        versionHistoryService.recordVersion(document.getId(), document.getVersion(),
+                user.getUsername(), "Uploaded: " + title);
 
         return toResponse(document, new String(content, StandardCharsets.UTF_8));
     }

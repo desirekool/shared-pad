@@ -5,6 +5,7 @@ import SyncEditor, { type EditorOperation } from "../../components/SyncEditor";
 import { useDocumentSync } from "../../hooks/useDocumentSync";
 import { usePresence } from "../../hooks/usePresence";
 import PresenceBar from "../../components/PresenceBar";
+import VersionPanel from "../../components/VersionPanel";
 
 export default function DocumentEditor() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +15,7 @@ export default function DocumentEditor() {
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const applyOpRef = useRef<((op: EditorOperation) => void) | null>(null);
 
   const { activeUsers, sendCursor, sendTyping, joinDocument, leaveDocument } = usePresence({
@@ -83,6 +85,11 @@ export default function DocumentEditor() {
     }
   };
 
+  const handleRestore = useCallback((restoredContent: string) => {
+    setContent(restoredContent);
+    setShowHistory(false);
+  }, []);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       <div style={{ padding: "8px 16px", display: "flex", gap: 8, alignItems: "center", borderBottom: "1px solid #ccc" }}>
@@ -95,24 +102,34 @@ export default function DocumentEditor() {
         <button onClick={handleSave} disabled={saving}>
           {saving ? "Saving..." : "Save"}
         </button>
+        {doc && (
+          <button onClick={() => setShowHistory(!showHistory)}>
+            {showHistory ? "Hide History" : "History"}
+          </button>
+        )}
       </div>
       <PresenceBar users={activeUsers} />
       {error && <div style={{ padding: 8, color: "red" }}>{error}</div>}
-      <div style={{ flex: 1 }}>
-        {id === "new" ? (
-          <div style={{ padding: 20 }}>
-            <h2>New Document</h2>
-            <p>Use the Create button on the document list.</p>
-          </div>
-        ) : doc ? (
-          <SyncEditor
-            value={content}
-            version={doc.version}
-            onChange={setContent}
-            onOperation={handleOperation}
-          />
-        ) : (
-          <div style={{ padding: 20 }}>Loading...</div>
+      <div style={{ display: "flex", flex: 1 }}>
+        <div style={{ flex: 1 }}>
+          {id === "new" ? (
+            <div style={{ padding: 20 }}>
+              <h2>New Document</h2>
+              <p>Use the Create button on the document list.</p>
+            </div>
+          ) : doc ? (
+            <SyncEditor
+              value={content}
+              version={doc.version}
+              onChange={setContent}
+              onOperation={handleOperation}
+            />
+          ) : (
+            <div style={{ padding: 20 }}>Loading...</div>
+          )}
+        </div>
+        {showHistory && doc && (
+          <VersionPanel documentId={doc.id} onRestore={handleRestore} />
         )}
       </div>
     </div>

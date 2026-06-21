@@ -97,6 +97,33 @@ export async function uploadDocument(file: File): Promise<DocumentResponse> {
   return handleResponse<DocumentResponse>(res);
 }
 
+export interface DocumentVersion {
+  id: number;
+  documentId: number;
+  versionNumber: number;
+  createdBy: string;
+  createdAt: string;
+  message: string;
+}
+
+export async function getVersions(id: number): Promise<DocumentVersion[]> {
+  const res = await fetch(`${API_BASE}/documents/${id}/versions`, { headers: getHeaders() });
+  return handleResponse<DocumentVersion[]>(res);
+}
+
+export async function getVersionContent(id: number, version: number): Promise<{ content: string; version: number; title: string }> {
+  const res = await fetch(`${API_BASE}/documents/${id}/versions/${version}`, { headers: getHeaders() });
+  return handleResponse(res);
+}
+
+export async function restoreVersion(id: number, version: number): Promise<DocumentResponse> {
+  const res = await fetch(`${API_BASE}/documents/${id}/versions/${version}/restore`, {
+    method: "POST",
+    headers: getHeaders(),
+  });
+  return handleResponse<DocumentResponse>(res);
+}
+
 export async function downloadDocument(id: number): Promise<Blob> {
   const token = localStorage.getItem("token");
   const res = await fetch(`${API_BASE}/documents/${id}/download`, {

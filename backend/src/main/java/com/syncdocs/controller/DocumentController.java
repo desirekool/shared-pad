@@ -28,6 +28,7 @@ public class DocumentController {
     private final DocumentService documentService;
     private final UserRepository userRepository;
     private final EditHistoryService editHistoryService;
+    private final VersionHistoryService versionHistoryService;
 
     private User getUser(Authentication auth) {
         return userRepository.findByUsername(auth.getName())
@@ -136,6 +137,52 @@ public class DocumentController {
             documentService.getById(id, user);
             List<EditHistory> history = editHistoryService.getHistory(id);
             return ResponseEntity.ok(history);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(400, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/versions")
+    public ResponseEntity<?> getVersions(@PathVariable Long id, Authentication auth) {
+        try {
+            User user = getUser(auth);
+            documentService.getById(id, user);
+            return ResponseEntity.ok(versionHistoryService.getVersions(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(400, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/versions/{version}")
+    public ResponseEntity<?> getVersionContent(@PathVariable Long id,
+                                                @PathVariable Long version,
+                                                Authentication auth) {
+        try {
+            User user = getUser(auth);
+            documentService.getById(id, user);
+            byte[] content = versionHistoryService.getVersionContent(id, version);
+            DocumentResponse doc = documentService.getById(id, user);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            return new ResponseEntity<>(java.util.Map.of(
+                    "content", new String(content, java.nio.charset.StandardCharsets.UTF_8),
+                    "version", version,
+                    "title", doc.getTitle()
+            ), headers, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(400, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/versions/{version}/restore")
+    public ResponseEntity<?> restoreVersion(@PathVariable Long id,
+                                             @PathVariable Long version,
+                                             Authentication auth) {
+        try {
+            User user = getUser(auth);
+            DocumentResponse response = versionHistoryService.restore(id, version, user.getUsername());
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(400, e.getMessage()));
         }
