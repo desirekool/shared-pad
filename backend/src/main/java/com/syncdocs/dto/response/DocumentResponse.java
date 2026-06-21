@@ -21,4 +21,5 @@ public class DocumentResponse {
     private Instant updatedAt;
     private String content;
     private String originalFilename;
+    private String permissionLevel;
 }

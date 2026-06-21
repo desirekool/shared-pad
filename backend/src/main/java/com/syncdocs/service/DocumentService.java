@@ -40,6 +40,15 @@ public class DocumentService {
         }
     }
 
+    private String resolvePermissionLevel(Document document, User user) {
+        if (document.getOwner().getId().equals(user.getId())) {
+            return "OWNER";
+        }
+        return permissionRepository.findByDocumentAndUser(document, user)
+                .map(p -> p.getPermissionLevel().name())
+                .orElse("VIEWER");
+    }
+
     private String generateObjectKey(Long documentId, Long version) {
         return documentId + "/" + version;
     }
@@ -127,7 +136,9 @@ public class DocumentService {
         byte[] content = minioService.getObject(objectKey);
         String contentStr = new String(content, StandardCharsets.UTF_8);
 
-        return toResponse(document, contentStr);
+        String permissionLevel = resolvePermissionLevel(document, user);
+
+        return toResponse(document, contentStr, permissionLevel);
     }
 
     public List<DocumentResponse> listOwn(User user) {
@@ -240,6 +251,10 @@ public class DocumentService {
     }
 
     private DocumentResponse toResponse(Document document, String content) {
+        return toResponse(document, content, null);
+    }
+
+    private DocumentResponse toResponse(Document document, String content, String permissionLevel) {
         return DocumentResponse.builder()
                 .id(document.getId())
                 .title(document.getTitle())
@@ -251,6 +266,7 @@ public class DocumentService {
                 .updatedAt(document.getUpdatedAt())
                 .content(content)
                 .originalFilename(document.getOriginalFilename())
+                .permissionLevel(permissionLevel)
                 .build();
     }
 }

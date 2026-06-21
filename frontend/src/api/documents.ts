@@ -19,6 +19,7 @@ export interface DocumentResponse {
   updatedAt: string;
   content: string | null;
   originalFilename: string | null;
+  permissionLevel?: string;
 }
 
 async function handleResponse<T>(res: Response): Promise<T> {
@@ -122,6 +123,35 @@ export async function restoreVersion(id: number, version: number): Promise<Docum
     headers: getHeaders(),
   });
   return handleResponse<DocumentResponse>(res);
+}
+
+export interface PermissionInfo {
+  id: number;
+  documentId: number;
+  username: string;
+  permissionLevel: string;
+}
+
+export async function listPermissions(documentId: number): Promise<PermissionInfo[]> {
+  const res = await fetch(`${API_BASE}/documents/${documentId}/permissions`, { headers: getHeaders() });
+  return handleResponse<PermissionInfo[]>(res);
+}
+
+export async function shareDocument(documentId: number, username: string, permissionLevel: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/documents/${documentId}/permissions`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify({ username, permissionLevel }),
+  });
+  await handleResponse(res);
+}
+
+export async function revokePermission(documentId: number, userId: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/documents/${documentId}/permissions/${userId}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+  await handleResponse(res);
 }
 
 export async function downloadDocument(id: number): Promise<Blob> {

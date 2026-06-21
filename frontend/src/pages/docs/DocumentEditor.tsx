@@ -6,6 +6,7 @@ import { useDocumentSync } from "../../hooks/useDocumentSync";
 import { usePresence } from "../../hooks/usePresence";
 import PresenceBar from "../../components/PresenceBar";
 import VersionPanel from "../../components/VersionPanel";
+import ShareDialog from "../../components/ShareDialog";
 
 export default function DocumentEditor() {
   const { id } = useParams<{ id: string }>();
@@ -16,9 +17,13 @@ export default function DocumentEditor() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const applyOpRef = useRef<((op: EditorOperation) => void) | null>(null);
 
-  const { activeUsers, sendCursor, sendTyping, joinDocument, leaveDocument } = usePresence({
+  const isOwner = doc?.permissionLevel === "OWNER";
+  const isReadOnly = doc?.permissionLevel === "VIEWER";
+
+  const { activeUsers, joinDocument, leaveDocument } = usePresence({
     documentId: id || "new",
   });
 
@@ -67,13 +72,14 @@ export default function DocumentEditor() {
 
   const handleOperation = useCallback(
     (op: EditorOperation) => {
+      if (isReadOnly) return;
       sendOperation(op);
     },
-    [sendOperation]
+    [sendOperation, isReadOnly]
   );
 
   const handleSave = async () => {
-    if (!doc) return;
+    if (!doc || isReadOnly) return;
     setSaving(true);
     try {
       const updated = await updateDocument(doc.id, { title, content });
@@ -98,14 +104,27 @@ export default function DocumentEditor() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           style={{ fontSize: 16, flex: 1, padding: "4px 8px" }}
+          readOnly={isReadOnly}
         />
-        <button onClick={handleSave} disabled={saving}>
-          {saving ? "Saving..." : "Save"}
-        </button>
-        {doc && (
-          <button onClick={() => setShowHistory(!showHistory)}>
-            {showHistory ? "Hide History" : "History"}
+        {!isReadOnly && (
+          <button onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : "Save"}
           </button>
+        )}
+        {doc && (
+          <>
+            <button onClick={() => setShowHistory(!showHistory)}>
+              {showHistory ? "Hide History" : "History"}
+            </button>
+            {isOwner && (
+              <button onClick={() => setShowShare(true)}>Share</button>
+            )}
+          </>
+        )}
+        {isReadOnly && (
+          <span style={{ fontSize: 12, color: "#c00", padding: "2px 8px", background: "#fee", borderRadius: 4 }}>
+            Read-only
+          </span>
         )}
       </div>
       <PresenceBar users={activeUsers} />
@@ -123,6 +142,7 @@ export default function DocumentEditor() {
               version={doc.version}
               onChange={setContent}
               onOperation={handleOperation}
+              readonly={isReadOnly}
             />
           ) : (
             <div style={{ padding: 20 }}>Loading...</div>
@@ -132,6 +152,9 @@ export default function DocumentEditor() {
           <VersionPanel documentId={doc.id} onRestore={handleRestore} />
         )}
       </div>
+      {showShare && doc && (
+        <ShareDialog documentId={doc.id} onClose={() => setShowShare(false)} />
+      )}
     </div>
   );
 }
