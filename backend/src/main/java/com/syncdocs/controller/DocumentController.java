@@ -5,9 +5,11 @@ import com.syncdocs.dto.request.DocumentUpdateRequest;
 import com.syncdocs.dto.request.PromoteRequest;
 import com.syncdocs.dto.response.DocumentResponse;
 import com.syncdocs.dto.response.ErrorResponse;
+import com.syncdocs.model.EditHistory;
 import com.syncdocs.model.User;
 import com.syncdocs.repository.UserRepository;
 import com.syncdocs.service.DocumentService;
+import com.syncdocs.service.EditHistoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
@@ -25,6 +27,7 @@ public class DocumentController {
 
     private final DocumentService documentService;
     private final UserRepository userRepository;
+    private final EditHistoryService editHistoryService;
 
     private User getUser(Authentication auth) {
         return userRepository.findByUsername(auth.getName())
@@ -121,6 +124,18 @@ public class DocumentController {
             String title = file.getOriginalFilename() != null ? file.getOriginalFilename() : "untitled";
             DocumentResponse response = documentService.upload(title, file.getBytes(), file.getContentType(), user);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(400, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<?> getHistory(@PathVariable Long id, Authentication auth) {
+        try {
+            User user = getUser(auth);
+            documentService.getById(id, user);
+            List<EditHistory> history = editHistoryService.getHistory(id);
+            return ResponseEntity.ok(history);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(400, e.getMessage()));
         }

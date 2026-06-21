@@ -17,6 +17,7 @@ public class KafkaConsumerService {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final ConflictResolutionService conflictResolutionService;
+    private final EditHistoryService editHistoryService;
 
     @KafkaListener(topics = "document.edit", groupId = "syncdocs-group")
     public void handleEditEvent(KafkaDocumentEvent event) {
@@ -26,10 +27,19 @@ public class KafkaConsumerService {
 
         long operationVersion = payload.get("version") instanceof Number
                 ? ((Number) payload.get("version")).longValue() : 0;
+        String type = (String) payload.getOrDefault("type", "INSERT");
+        int position = payload.get("position") instanceof Number
+                ? ((Number) payload.get("position")).intValue() : 0;
+        String text = (String) payload.getOrDefault("text", "");
+        int length = payload.get("length") instanceof Number
+                ? ((Number) payload.get("length")).intValue() : 0;
 
         boolean accepted = conflictResolutionService.validateEdit(docId, operationVersion);
 
         if (accepted) {
+            editHistoryService.recordEdit(
+                    Long.parseLong(docId), userId, type, position, text, length, operationVersion);
+
             log.debug("Edit accepted: doc={} user={} version={}", docId, userId, operationVersion);
             broadcast(event, "/topic/document." + docId);
         } else {
