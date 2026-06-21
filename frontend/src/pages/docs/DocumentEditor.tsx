@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getDocument, updateDocument, type DocumentResponse } from "../../api/documents";
 import SyncEditor, { type EditorOperation } from "../../components/SyncEditor";
 import { useDocumentSync } from "../../hooks/useDocumentSync";
+import { usePresence } from "../../hooks/usePresence";
+import PresenceBar from "../../components/PresenceBar";
 
 export default function DocumentEditor() {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +15,10 @@ export default function DocumentEditor() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const applyOpRef = useRef<((op: EditorOperation) => void) | null>(null);
+
+  const { activeUsers, sendCursor, sendTyping, joinDocument, leaveDocument } = usePresence({
+    documentId: id || "new",
+  });
 
   const fetchDoc = useCallback(() => {
     if (!id || id === "new") return;
@@ -28,6 +34,12 @@ export default function DocumentEditor() {
   useEffect(() => {
     fetchDoc();
   }, [fetchDoc]);
+
+  useEffect(() => {
+    if (!id || id === "new") return;
+    joinDocument(id);
+    return () => leaveDocument(id);
+  }, [id, joinDocument, leaveDocument]);
 
   const handleRejected = useCallback(() => {
     setError("Edit rejected due to version conflict. Re-fetching...");
@@ -84,6 +96,7 @@ export default function DocumentEditor() {
           {saving ? "Saving..." : "Save"}
         </button>
       </div>
+      <PresenceBar users={activeUsers} />
       {error && <div style={{ padding: 8, color: "red" }}>{error}</div>}
       <div style={{ flex: 1 }}>
         {id === "new" ? (

@@ -42,11 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
+    localStorage.setItem("username", newUser.username);
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
+    localStorage.removeItem("username");
   };
 
   return (

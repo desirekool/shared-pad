@@ -1,22 +1,17 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { Client, type IMessage, type Subscription } from "@stomp/stompjs";
 
 const WS_URL = "ws://localhost:8080/ws";
 
-interface UseWebSocketOptions {
-  onConnect?: () => void;
-  onDisconnect?: () => void;
-}
+let sharedClient: Client | null = null;
+let sharedRefCount = 0;
+const connectCallbacks = new Set<() => void>();
+const disconnectCallbacks = new Set<() => void>();
 
-export function useWebSocket(options?: UseWebSocketOptions) {
-  const clientRef = useRef<Client | null>(null);
-  const subscriptionsRef = useRef<Map<string, Subscription>>(new Map());
-
-  useEffect(() => {
+function getClient(): Client {
+  if (!sharedClient) {
     const token = localStorage.getItem("token");
-    if (!token) return;
-
-    const client = new Client({
+    sharedClient = new Client({
       brokerURL: WS_URL,
       connectHeaders: {
         Authorization: `Bearer ${token}`,
@@ -25,26 +20,56 @@ export function useWebSocket(options?: UseWebSocketOptions) {
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
       onConnect: () => {
-        options?.onConnect?.();
+        connectCallbacks.forEach((cb) => cb());
       },
       onDisconnect: () => {
-        options?.onDisconnect?.();
+        disconnectCallbacks.forEach((cb) => cb());
       },
     });
+    sharedClient.activate();
+  }
+  return sharedClient;
+}
 
-    client.activate();
-    clientRef.current = client;
+interface UseWebSocketOptions {
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+}
+
+export function useWebSocket(options?: UseWebSocketOptions) {
+  const subscriptionsRef = useRef<Map<string, Subscription>>(new Map());
+  const [, setConnected] = useState(false);
+
+  useEffect(() => {
+    sharedRefCount++;
+
+    if (options?.onConnect) connectCallbacks.add(options.onConnect);
+    if (options?.onDisconnect) disconnectCallbacks.add(options.onDisconnect);
+
+    const client = getClient();
+    if (client.connected) {
+      setConnected(true);
+      options?.onConnect?.();
+    }
 
     return () => {
+      sharedRefCount--;
+      if (options?.onConnect) connectCallbacks.delete(options.onConnect);
+      if (options?.onDisconnect) disconnectCallbacks.delete(options.onDisconnect);
+
       subscriptionsRef.current.forEach((sub) => sub.unsubscribe());
       subscriptionsRef.current.clear();
-      client.deactivate();
+
+      if (sharedRefCount <= 0 && sharedClient) {
+        sharedClient.deactivate();
+        sharedClient = null;
+      }
     };
   }, []);
 
   const subscribe = useCallback(
     (destination: string, callback: (msg: IMessage) => void) => {
-      const client = clientRef.current;
+      const client = sharedClient;
       if (!client || !client.connected) {
         console.warn("WebSocket not connected, cannot subscribe to", destination);
         return;
@@ -53,7 +78,13 @@ export function useWebSocket(options?: UseWebSocketOptions) {
       const existing = subscriptionsRef.current.get(destination);
       if (existing) existing.unsubscribe();
 
-      const subscription = client.subscribe(destination, callback);
+      const subscription = client.subscribe(destination, (msg) => {
+        try {
+          callback(msg);
+        } catch (e) {
+          console.error("Error in message handler for", destination, e);
+        }
+      });
       subscriptionsRef.current.set(destination, subscription);
     },
     []
@@ -69,7 +100,7 @@ export function useWebSocket(options?: UseWebSocketOptions) {
 
   const publish = useCallback(
     (destination: string, body: unknown) => {
-      const client = clientRef.current;
+      const client = sharedClient;
       if (!client || !client.connected) {
         console.warn("WebSocket not connected, cannot publish to", destination);
         return;
@@ -84,7 +115,8 @@ export function useWebSocket(options?: UseWebSocketOptions) {
 
   const joinDocument = useCallback(
     (documentId: string) => {
-      publish(`/app/documents.join.${documentId}`, { documentId });
+      const username = localStorage.getItem("username") || "anonymous";
+      publish(`/app/documents.join.${documentId}`, { documentId, username });
     },
     [publish]
   );
