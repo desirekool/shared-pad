@@ -1,0 +1,34 @@
+# Maven
+target/
+*.jar
+*.war
+
+# Node / Electron
+node_modules/
+dist/
+out/
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Docker
+docker-data/
+
+# MinIO local data
+minio-data/
+
+# PostgreSQL local data
+pgdata/
