@@ -1,0 +1,16 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  kafka:
+    producer:
+      properties:
+        spring.json.add.type.headers: false
+
+logging:
+  level:
+    com.syncdocs: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.security: DEBUG

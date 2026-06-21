@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: syncdocs-backend
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/syncdocs}
+    username: ${DB_USERNAME:syncdocs}
+    password: ${DB_PASSWORD:syncdocs}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.syncdocs.*
+
+server:
+  port: ${SERVER_PORT:8080}
+
+minio:
+  url: ${MINIO_URL:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:syncdocs}
+  secret-key: ${MINIO_SECRET_KEY:syncdocs-secret}
+  bucket: ${MINIO_BUCKET:syncdocs-documents}
+
+jwt:
+  secret: ${JWT_SECRET:YnNjaG9vbCBkYXkgc3ByaW5nIGJvb3Qgc2VjdXJpdHkgand0IHNlY3JldCBrZXkgZm9yIHN5bmNkb2Nz}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+logging:
+  level:
+    com.syncdocs: DEBUG
+    org.springframework.web.socket: INFO
+    org.apache.kafka: WARN

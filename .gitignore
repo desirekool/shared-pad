@@ -6,6 +6,8 @@ target/
 # Node / Electron
 node_modules/
 dist/
+dist-electron/
+release/
 out/
 *.log
 
