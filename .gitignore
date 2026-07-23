@@ -34,3 +34,5 @@ minio-data/
 
 # PostgreSQL local data
 pgdata/
+
+IMPLEMENTATION_PLAN.md
