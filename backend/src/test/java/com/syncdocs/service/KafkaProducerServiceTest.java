@@ -8,7 +8,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 
-import java.time.Instant;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -27,7 +26,7 @@ class KafkaProducerServiceTest {
                 .eventType("EDIT")
                 .documentId("1")
                 .userId("alice")
-                .timestamp(Instant.now())
+                .timestamp(System.currentTimeMillis())
                 .payload(Map.of("type", "INSERT"))
                 .build();
 

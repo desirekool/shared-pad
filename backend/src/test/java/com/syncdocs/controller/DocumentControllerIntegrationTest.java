@@ -1,6 +1,6 @@
 package com.syncdocs.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.syncdocs.dto.request.DocumentCreateRequest;
 import com.syncdocs.model.Document;
 import com.syncdocs.model.Role;
@@ -14,7 +14,7 @@ import com.syncdocs.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -41,6 +41,7 @@ class DocumentControllerIntegrationTest {
 
     private String token;
     private User user;
+    private Long docId;
 
     @BeforeEach
     void setUp() {
@@ -62,6 +63,21 @@ class DocumentControllerIntegrationTest {
         token = jwtTokenProvider.generateToken(user.getUsername());
     }
 
+    private void createTestDoc() {
+        Document doc = Document.builder()
+                .title("Existing Doc")
+                .owner(user)
+                .mimeType("text/plain")
+                .status(com.syncdocs.model.enums.DocumentStatus.ACTIVE)
+                .version(1L)
+                .build();
+        doc = documentRepository.save(doc);
+        docId = doc.getId();
+
+        org.mockito.Mockito.when(minioService.getObject(docId + "/1"))
+                .thenReturn("test content".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
     @Test
     void createDocument_ShouldReturn201() throws Exception {
         DocumentCreateRequest request = new DocumentCreateRequest();
@@ -69,11 +85,10 @@ class DocumentControllerIntegrationTest {
         request.setContent("Test content");
         request.setMimeType("text/plain");
 
-        org.mockito.Mockito.when(minioService.putObject(
+        org.mockito.Mockito.doNothing().when(minioService).putObject(
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.anyString()))
-                .thenAnswer(i -> null);
+                org.mockito.ArgumentMatchers.anyString());
 
         mockMvc.perform(post("/api/documents")
                         .header("Authorization", "Bearer " + token)
@@ -85,10 +100,76 @@ class DocumentControllerIntegrationTest {
     }
 
     @Test
+    void createDocument_ShouldRejectEmptyTitle() throws Exception {
+        DocumentCreateRequest request = new DocumentCreateRequest();
+        request.setTitle("");
+        request.setContent("content");
+
+        mockMvc.perform(post("/api/documents")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getDocument_NonExistent_ShouldReturn404() throws Exception {
+        mockMvc.perform(get("/api/documents/99999")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteDocument_NonExistent_ShouldReturn400() throws Exception {
+        mockMvc.perform(delete("/api/documents/99999")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateDocument_NonExistent_ShouldReturn400() throws Exception {
+        String body = "{\"title\":\"Updated\"}";
+        mockMvc.perform(put("/api/documents/99999")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void downloadDocument_NonExistent_ShouldReturn404() throws Exception {
+        mockMvc.perform(get("/api/documents/99999/download")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void listDocuments_ShouldReturn200() throws Exception {
         mockMvc.perform(get("/api/documents")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void getEvents_ShouldReturn200ForExistingDoc() throws Exception {
+        createTestDoc();
+
+        mockMvc.perform(get("/api/documents/" + docId + "/events")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getEvents_NonExistentDoc_ShouldReturn400() throws Exception {
+        mockMvc.perform(get("/api/documents/99999/events")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getEvents_ShouldReturn401WithoutToken() throws Exception {
+        mockMvc.perform(get("/api/documents/1/events"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

@@ -146,12 +146,30 @@ export async function shareDocument(documentId: number, username: string, permis
   await handleResponse(res);
 }
 
-export async function revokePermission(documentId: number, userId: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/documents/${documentId}/permissions/${userId}`, {
+export async function revokePermission(documentId: number, permissionId: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/documents/${documentId}/permissions/${permissionId}`, {
     method: "DELETE",
     headers: getHeaders(),
   });
   await handleResponse(res);
+}
+
+export interface StoredEvent {
+  id: number;
+  eventType: string;
+  documentId: number;
+  userId: string;
+  sessionId: string;
+  payload: string | null;
+  createdAt: string;
+}
+
+export async function getDocumentEvents(id: number, after?: number): Promise<StoredEvent[]> {
+  const url = after
+    ? `${API_BASE}/documents/${id}/events?after=${after}`
+    : `${API_BASE}/documents/${id}/events`;
+  const res = await fetch(url, { headers: getHeaders() });
+  return handleResponse<StoredEvent[]>(res);
 }
 
 export async function downloadDocument(id: number): Promise<Blob> {

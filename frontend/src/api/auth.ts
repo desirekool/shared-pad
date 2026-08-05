@@ -37,3 +37,16 @@ export async function register(username: string, email: string, password: string
   });
   return handleResponse<AuthResponse>(res);
 }
+
+function getHeaders(): HeadersInit {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+export async function searchUsers(query: string): Promise<string[]> {
+  const res = await fetch(`${API_BASE}/users/search?q=${encodeURIComponent(query)}`, { headers: getHeaders() });
+  return handleResponse<string[]>(res);
+}

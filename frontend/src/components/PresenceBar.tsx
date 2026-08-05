@@ -6,44 +6,22 @@ interface PresenceBarProps {
 
 export default function PresenceBar({ users }: PresenceBarProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "4px 12px",
-        borderBottom: "1px solid #ccc",
-        fontSize: 13,
-      }}
-    >
-      <span style={{ color: "#666" }}>Active:</span>
+    <div className="flex items-center gap-2 px-3 py-1 border-b border-slate-300 text-[13px]">
+      <span className="text-slate-500">Active:</span>
       {users.length === 0 ? (
-        <span style={{ color: "#999" }}>You're the only one here</span>
+        <span className="text-slate-400">You're the only one here</span>
       ) : (
-        users.map((user) => (
+        users.map((u) => (
           <div
-            key={user.userId}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "2px 8px",
-              background: "#e8f4fd",
-              borderRadius: 12,
-            }}
+            key={u.userId}
+            className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 rounded-xl"
           >
             <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: user.typing ? "#f0ad4e" : "#5cb85c",
-                display: "inline-block",
-              }}
+              className={`inline-block w-2 h-2 rounded-full ${u.typing ? "bg-amber-400" : "bg-green-500"}`}
             />
-            <span>{user.username}</span>
-            {user.typing && (
-              <span style={{ color: "#999", fontStyle: "italic" }}>typing...</span>
+            <span>{u.username}</span>
+            {u.typing && (
+              <span className="text-slate-400 italic">typing...</span>
             )}
           </div>
         ))

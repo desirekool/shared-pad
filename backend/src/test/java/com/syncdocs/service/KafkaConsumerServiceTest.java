@@ -8,7 +8,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
-import java.time.Instant;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -20,8 +19,53 @@ class KafkaConsumerServiceTest {
     @Mock private SimpMessagingTemplate messagingTemplate;
     @Mock private ConflictResolutionService conflictResolutionService;
     @Mock private EditHistoryService editHistoryService;
+    @Mock private StoredEventService storedEventService;
 
     @InjectMocks private KafkaConsumerService kafkaConsumerService;
+
+    @Test
+    void handleEditEvent_ShouldPersistEvent() {
+        KafkaDocumentEvent event = KafkaDocumentEvent.builder()
+                .eventType("EDIT")
+                .documentId("1")
+                .userId("alice")
+                .timestamp(System.currentTimeMillis())
+                .payload(Map.of("type", "INSERT", "position", 0, "text", "Hi", "length", 0, "version", 1))
+                .build();
+
+        when(conflictResolutionService.validateEdit("1", 1L)).thenReturn(false);
+
+        kafkaConsumerService.handleEditEvent(event);
+
+        verify(storedEventService).storeEvent(event);
+    }
+
+    @Test
+    void handleSaveEvent_ShouldPersistEvent() {
+        KafkaDocumentEvent event = KafkaDocumentEvent.builder().eventType("SAVE").documentId("1").userId("alice").build();
+
+        kafkaConsumerService.handleSaveEvent(event);
+
+        verify(storedEventService).storeEvent(event);
+    }
+
+    @Test
+    void handleCreatedEvent_ShouldPersistEvent() {
+        KafkaDocumentEvent event = KafkaDocumentEvent.builder().eventType("CREATED").documentId("1").userId("alice").build();
+
+        kafkaConsumerService.handleCreatedEvent(event);
+
+        verify(storedEventService).storeEvent(event);
+    }
+
+    @Test
+    void handleDeletedEvent_ShouldPersistEvent() {
+        KafkaDocumentEvent event = KafkaDocumentEvent.builder().eventType("DELETED").documentId("1").userId("alice").build();
+
+        kafkaConsumerService.handleDeletedEvent(event);
+
+        verify(storedEventService).storeEvent(event);
+    }
 
     @Test
     void handleEditEvent_ShouldBroadcastWhenAccepted() {
@@ -29,7 +73,7 @@ class KafkaConsumerServiceTest {
                 .eventType("EDIT")
                 .documentId("1")
                 .userId("alice")
-                .timestamp(Instant.now())
+                .timestamp(System.currentTimeMillis())
                 .payload(Map.of(
                         "type", "INSERT",
                         "position", 0,
@@ -73,5 +117,44 @@ class KafkaConsumerServiceTest {
         kafkaConsumerService.handlePresenceEvent(event);
 
         verify(messagingTemplate).convertAndSend(eq("/topic/document.1.presence"), eq(event));
+    }
+
+    @Test
+    void handleSaveEvent_ShouldBroadcast() {
+        KafkaDocumentEvent event = KafkaDocumentEvent.builder()
+                .eventType("SAVE")
+                .documentId("2")
+                .userId("bob")
+                .build();
+
+        kafkaConsumerService.handleSaveEvent(event);
+
+        verify(messagingTemplate).convertAndSend(eq("/topic/document.2"), eq(event));
+    }
+
+    @Test
+    void handleCreatedEvent_ShouldBroadcastToDocumentsTopic() {
+        KafkaDocumentEvent event = KafkaDocumentEvent.builder()
+                .eventType("CREATED")
+                .documentId("3")
+                .userId("alice")
+                .build();
+
+        kafkaConsumerService.handleCreatedEvent(event);
+
+        verify(messagingTemplate).convertAndSend(eq("/topic/documents"), eq(event));
+    }
+
+    @Test
+    void handleDeletedEvent_ShouldBroadcastToDocumentsTopic() {
+        KafkaDocumentEvent event = KafkaDocumentEvent.builder()
+                .eventType("DELETED")
+                .documentId("4")
+                .userId("bob")
+                .build();
+
+        kafkaConsumerService.handleDeletedEvent(event);
+
+        verify(messagingTemplate).convertAndSend(eq("/topic/documents"), eq(event));
     }
 }

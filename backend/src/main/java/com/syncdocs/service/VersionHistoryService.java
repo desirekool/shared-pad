@@ -49,7 +49,6 @@ public class VersionHistoryService {
         byte[] content = minioService.getObject(objectKey);
         String contentStr = new String(content, StandardCharsets.UTF_8);
 
-        document.setContent(null);
         document = documentRepository.save(document);
 
         long newVersion = document.getVersion();

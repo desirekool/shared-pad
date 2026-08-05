@@ -42,10 +42,19 @@ class ConflictResolutionServiceTest {
     }
 
     @Test
-    void validateEdit_ShouldRejectWhenVersionMismatch() {
+    void validateEdit_ShouldAcceptWhenVersionBehind() {
         when(documentRepository.findById(1L)).thenReturn(Optional.of(document));
 
         boolean result = conflictResolutionService.validateEdit("1", 3L);
+
+        assertTrue(result);
+    }
+
+    @Test
+    void validateEdit_ShouldRejectWhenVersionIsFuture() {
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(document));
+
+        boolean result = conflictResolutionService.validateEdit("1", 10L);
 
         assertFalse(result);
     }

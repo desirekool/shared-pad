@@ -16,23 +16,33 @@ public class ConflictResolutionService {
 
     @Transactional
     public boolean validateEdit(String documentId, long operationVersion) {
-        Long docId = Long.valueOf(documentId);
-        Document document = documentRepository.findById(docId).orElse(null);
-        if (document == null) {
-            log.warn("Document not found: {}", documentId);
-            return false;
-        }
+        try {
+            Long docId = Long.valueOf(documentId);
+            Document document = documentRepository.findById(docId).orElse(null);
+            if (document == null) {
+                log.warn("Document not found: {}", documentId);
+                return false;
+            }
 
-        long currentVersion = document.getVersion();
+            long currentVersion = document.getVersion() != null ? document.getVersion() : 0;
+            if (operationVersion > currentVersion + 1) {
+                log.warn("Edit rejected (future version): doc={} opVersion={} currentVersion={}",
+                        documentId, operationVersion, currentVersion);
+                return false;
+            }
 
-        if (operationVersion == currentVersion) {
-            log.debug("Edit accepted: doc={} opVersion={} serverVersion={}",
+            if (operationVersion <= currentVersion) {
+                log.debug("Edit accepted (replay/retry): doc={} opVersion={} currentVersion={}",
+                        documentId, operationVersion, currentVersion);
+                return true;
+            }
+
+            log.debug("Edit accepted: doc={} opVersion={} currentVersion={}",
                     documentId, operationVersion, currentVersion);
             return true;
+        } catch (NumberFormatException e) {
+            log.warn("Non-numeric document ID (likely not yet created): {}", documentId);
+            return false;
         }
-
-        log.warn("Edit rejected (stale version): doc={} opVersion={} serverVersion={}",
-                documentId, operationVersion, currentVersion);
-        return false;
     }
 }

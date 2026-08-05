@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link } from "@tanstack/react-router";
 import { useAuth } from "../context/AuthContext";
 import { login as apiLogin } from "../api/auth";
 
@@ -16,17 +16,17 @@ export default function Login() {
     try {
       const res = await apiLogin(username, password);
       login(res.token, { username: res.username, email: res.email, roles: res.roles });
-      navigate("/");
+      navigate({ to: "/" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     }
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "100px auto", padding: 20 }}>
+    <div className="max-w-[400px] mx-auto mt-[100px] p-5">
       <h1>SyncDocs</h1>
       <h2>Login</h2>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p className="text-red-500">{error}</p>}
       <form onSubmit={handleSubmit}>
         <div>
           <label>Username</label>

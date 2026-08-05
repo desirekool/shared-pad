@@ -5,13 +5,14 @@ interface QueuedMessage {
   body: string;
   timestamp: number;
   documentId?: string;
+  version?: number;
 }
 
 function getQueueKey(documentId: string): string {
   return QUEUE_KEY_PREFIX + documentId;
 }
 
-export function enqueueOperation(documentId: string, destination: string, body: unknown): void {
+export function enqueueOperation(documentId: string, destination: string, body: unknown, version?: number): void {
   const key = getQueueKey(documentId);
   const queue = getQueue(documentId);
   queue.push({
@@ -19,14 +20,28 @@ export function enqueueOperation(documentId: string, destination: string, body: 
     body: JSON.stringify(body),
     timestamp: Date.now(),
     documentId,
+    version,
   });
   localStorage.setItem(key, JSON.stringify(queue));
 }
 
-export function getQueue(documentId: string): QueuedMessage[] {
+const MAX_AGE_MS = 30_000;
+
+export function getQueue(documentId: string, maxAge = MAX_AGE_MS): QueuedMessage[] {
   const key = getQueueKey(documentId);
   const raw = localStorage.getItem(key);
-  return raw ? JSON.parse(raw) : [];
+  if (!raw) return [];
+  const all: QueuedMessage[] = JSON.parse(raw);
+  const now = Date.now();
+  const fresh = all.filter((m) => now - m.timestamp < maxAge);
+  if (fresh.length < all.length) {
+    if (fresh.length > 0) {
+      localStorage.setItem(key, JSON.stringify(fresh));
+    } else {
+      localStorage.removeItem(key);
+    }
+  }
+  return fresh;
 }
 
 export function clearQueue(documentId: string): void {

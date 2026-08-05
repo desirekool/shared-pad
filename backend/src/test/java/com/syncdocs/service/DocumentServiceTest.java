@@ -59,9 +59,9 @@ class DocumentServiceTest {
         request.setMimeType("text/plain");
 
         when(documentRepository.save(any(Document.class))).thenAnswer(i -> i.getArgument(0));
-        when(minioService.putObject(anyString(), any(), anyString())).thenAnswer(i -> null);
-        when(versionHistoryService.recordVersion(any(), any(), any(), any())).thenAnswer(i -> null);
-        when(auditService.logDocumentEvent(any(), any(), any(), any())).thenAnswer(i -> null);
+        doNothing().when(minioService).putObject(anyString(), any(), anyString());
+        doNothing().when(versionHistoryService).recordVersion(any(), any(), any(), any());
+        doNothing().when(auditService).logDocumentEvent(any(), any(), any(), any());
 
         DocumentResponse response = documentService.create(request, owner);
 
@@ -75,7 +75,7 @@ class DocumentServiceTest {
         when(documentRepository.findByIdAndStatus(1L, DocumentStatus.ACTIVE))
                 .thenReturn(Optional.of(document));
         when(minioService.getObject(anyString())).thenReturn("Hello".getBytes());
-        when(auditService.logDocumentEvent(any(), any(), any(), any())).thenAnswer(i -> null);
+        doNothing().when(auditService).logDocumentEvent(any(), any(), any(), any());
 
         DocumentResponse response = documentService.getById(1L, owner);
 
@@ -85,7 +85,7 @@ class DocumentServiceTest {
 
     @Test
     void listOwn_ShouldReturnUserDocuments() {
-        when(documentRepository.findOwnedDocuments(owner, DocumentStatus.ACTIVE))
+        when(documentRepository.findAccessibleDocuments(owner, DocumentStatus.ACTIVE))
                 .thenReturn(List.of(document));
 
         List<DocumentResponse> docs = documentService.listOwn(owner);

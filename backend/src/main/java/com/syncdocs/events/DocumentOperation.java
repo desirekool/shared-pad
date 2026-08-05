@@ -14,11 +14,11 @@ public class DocumentOperation {
     private String documentId;
     private String userId;
     private OperationType type;
-    private int position;
+    private Integer position;
     private String text;
-    private int length;
+    private Integer length;
     private long version;
-    private long timestamp;
+    private Long timestamp;
 
     public enum OperationType {
         INSERT,

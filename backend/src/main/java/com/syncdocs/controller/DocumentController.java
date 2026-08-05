@@ -6,10 +6,13 @@ import com.syncdocs.dto.request.PromoteRequest;
 import com.syncdocs.dto.response.DocumentResponse;
 import com.syncdocs.dto.response.ErrorResponse;
 import com.syncdocs.model.EditHistory;
+import com.syncdocs.model.StoredEvent;
 import com.syncdocs.model.User;
 import com.syncdocs.repository.UserRepository;
 import com.syncdocs.service.DocumentService;
 import com.syncdocs.service.EditHistoryService;
+import com.syncdocs.service.StoredEventService;
+import com.syncdocs.service.VersionHistoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
@@ -29,6 +32,7 @@ public class DocumentController {
     private final UserRepository userRepository;
     private final EditHistoryService editHistoryService;
     private final VersionHistoryService versionHistoryService;
+    private final StoredEventService storedEventService;
 
     private User getUser(Authentication auth) {
         return userRepository.findByUsername(auth.getName())
@@ -125,6 +129,22 @@ public class DocumentController {
             String title = file.getOriginalFilename() != null ? file.getOriginalFilename() : "untitled";
             DocumentResponse response = documentService.upload(title, file.getBytes(), file.getContentType(), user);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(400, e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/events")
+    public ResponseEntity<?> getEvents(@PathVariable Long id,
+                                        @RequestParam(required = false) Long after,
+                                        Authentication auth) {
+        try {
+            User user = getUser(auth);
+            documentService.getById(id, user);
+            List<StoredEvent> events = after != null
+                    ? storedEventService.getEventsSince(id, after)
+                    : storedEventService.getAllEvents(id);
+            return ResponseEntity.ok(events);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(400, e.getMessage()));
         }

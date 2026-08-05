@@ -14,8 +14,13 @@ interface SaveResult {
 
 interface ElectronAPI {
   openFile: () => Promise<FileResult | null>;
+  openLocalFile: () => Promise<FileResult | null>;
   saveFile: (filePath: string, content: string) => Promise<SaveResult>;
   saveAs: (content: string, defaultName: string) => Promise<SaveResult>;
+  onFileOpened: (callback: (data: FileResult) => void) => () => void;
+  onFileImported: (callback: (data: FileResult) => void) => () => void;
+  onSaveRequested: (callback: () => void) => () => void;
+  onSaveAsRequested: (callback: () => void) => () => void;
 }
 
 interface Window {

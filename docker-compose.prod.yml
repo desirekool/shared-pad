@@ -35,15 +35,15 @@ services:
       KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      CLUSTER_ID: syncdocs-kafka-cluster
+      CLUSTER_ID: YAV9N9BNRqilUlDyks6R4w
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
       interval: 15s
-      timeout: 10s
+      timeout: 15s
       retries: 10
-      start_period: 30s
+      start_period: 60s
 
   minio:
     image: minio/minio:latest

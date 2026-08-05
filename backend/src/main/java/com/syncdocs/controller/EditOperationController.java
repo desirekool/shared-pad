@@ -11,7 +11,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
-import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 
 @Controller
@@ -31,23 +31,26 @@ public class EditOperationController {
         operation.setUserId(username);
         operation.setTimestamp(System.currentTimeMillis());
 
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", operation.getType() != null ? operation.getType().name() : "INSERT");
+        payload.put("position", operation.getPosition() != null ? operation.getPosition() : 0);
+        payload.put("text", operation.getText() != null ? operation.getText() : "");
+        payload.put("length", operation.getLength() != null ? operation.getLength() : 0);
+        payload.put("version", operation.getVersion());
+
         KafkaDocumentEvent event = KafkaDocumentEvent.builder()
                 .eventType("EDIT")
                 .documentId(documentId)
                 .userId(username)
-                .timestamp(Instant.now())
-                .payload(Map.of(
-                        "type", operation.getType().name(),
-                        "position", operation.getPosition(),
-                        "text", operation.getText() != null ? operation.getText() : "",
-                        "length", operation.getLength(),
-                        "version", operation.getVersion()
-                ))
+                .timestamp(System.currentTimeMillis())
+                .payload(payload)
                 .build();
 
         kafkaProducerService.sendEditEvent(event);
-        log.debug("Edit op: {} {} pos={} doc={} user={}",
-                operation.getType(), operation.getText() != null ? "\"" + operation.getText() + "\"" : "",
-                operation.getPosition(), documentId, username);
+        log.info("Edit op received: type={} text={} pos={} len={} ver={} doc={} user={}",
+                operation.getType(),
+                operation.getText() != null ? "\"" + operation.getText() + "\"" : "\"\"",
+                operation.getPosition(), operation.getLength(), operation.getVersion(),
+                documentId, username);
     }
 }

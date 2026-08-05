@@ -13,12 +13,15 @@ import com.syncdocs.repository.DocumentRepository;
 import com.syncdocs.repository.UserRepository;
 import com.syncdocs.service.AuditService;
 import jakarta.validation.Valid;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/documents/{documentId}/permissions")
@@ -29,6 +32,7 @@ public class PermissionController {
     private final DocumentPermissionRepository permissionRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private User getUser(Authentication auth) {
         return userRepository.findByUsername(auth.getName())
@@ -108,34 +112,42 @@ public class PermissionController {
             auditService.logDocumentEvent("PERMISSION_CHANGED", currentUser.getUsername(),
                     documentId, "Shared with " + request.getUsername() + " as " + request.getPermissionLevel());
 
+            messagingTemplate.convertAndSendToUser(request.getUsername(), "/queue/permissions",
+                    Map.of("type", "SHARED", "documentId", documentId, "permissionLevel", request.getPermissionLevel()));
+
             return ResponseEntity.ok(new ErrorResponse(200, "Shared with " + request.getUsername()));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(400, e.getMessage()));
         }
     }
 
-    @DeleteMapping("/{userId}")
+    @DeleteMapping("/{permissionId}")
+    @Transactional
     public ResponseEntity<?> revoke(@PathVariable Long documentId,
-                                     @PathVariable Long userId,
+                                     @PathVariable Long permissionId,
                                      Authentication auth) {
         try {
             User currentUser = getUser(auth);
             Document document = getDocument(documentId);
             requireOwner(document, currentUser);
 
-            User targetUser = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            DocumentPermission perm = permissionRepository
-                    .findByDocumentAndUser(document, targetUser)
+            DocumentPermission perm = permissionRepository.findById(permissionId)
                     .orElseThrow(() -> new RuntimeException("Permission not found"));
 
+            if (!perm.getDocument().getId().equals(documentId)) {
+                throw new RuntimeException("Permission does not belong to this document");
+            }
+
+            String targetUsername = perm.getUser().getUsername();
             permissionRepository.delete(perm);
 
             auditService.logDocumentEvent("PERMISSION_REVOKED", currentUser.getUsername(),
-                    documentId, "Revoked access from " + targetUser.getUsername());
+                    documentId, "Revoked access from " + targetUsername);
 
-            return ResponseEntity.ok(new ErrorResponse(200, "Access revoked from " + targetUser.getUsername()));
+            messagingTemplate.convertAndSendToUser(targetUsername, "/queue/permissions",
+                    Map.of("type", "REVOKED", "documentId", documentId));
+
+            return ResponseEntity.ok(new ErrorResponse(200, "Access revoked from " + targetUsername));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(400, e.getMessage()));
         }

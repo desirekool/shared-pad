@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.Instant;
 import java.util.Map;
 
 @Data
@@ -18,6 +17,6 @@ public class KafkaDocumentEvent {
     private String documentId;
     private String userId;
     private String sessionId;
-    private Instant timestamp;
+    private long timestamp;
     private Map<String, Object> payload;
 }

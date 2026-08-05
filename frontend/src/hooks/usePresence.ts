@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useWebSocket } from "./useWebSocket";
 import type { IMessage } from "@stomp/stompjs";
 
@@ -21,6 +21,7 @@ export interface RemoteUser {
   cursor?: CursorPosition;
   selection?: SelectionRange;
   typing: boolean;
+  lastActivity?: number;
 }
 
 interface UsePresenceOptions {

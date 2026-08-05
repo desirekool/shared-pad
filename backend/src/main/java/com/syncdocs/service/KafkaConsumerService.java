@@ -18,9 +18,11 @@ public class KafkaConsumerService {
     private final SimpMessagingTemplate messagingTemplate;
     private final ConflictResolutionService conflictResolutionService;
     private final EditHistoryService editHistoryService;
+    private final StoredEventService storedEventService;
 
     @KafkaListener(topics = "document.edit", groupId = "syncdocs-group")
     public void handleEditEvent(KafkaDocumentEvent event) {
+        storedEventService.storeEvent(event);
         String docId = event.getDocumentId();
         String userId = event.getUserId();
         Map<String, Object> payload = event.getPayload();
@@ -56,18 +58,21 @@ public class KafkaConsumerService {
 
     @KafkaListener(topics = "document.save", groupId = "syncdocs-group")
     public void handleSaveEvent(KafkaDocumentEvent event) {
+        storedEventService.storeEvent(event);
         log.info("Save event: doc={} user={}", event.getDocumentId(), event.getUserId());
         broadcast(event, "/topic/document." + event.getDocumentId());
     }
 
     @KafkaListener(topics = "document.created", groupId = "syncdocs-group")
     public void handleCreatedEvent(KafkaDocumentEvent event) {
+        storedEventService.storeEvent(event);
         log.info("Created event: doc={} user={}", event.getDocumentId(), event.getUserId());
         broadcast(event, "/topic/documents");
     }
 
     @KafkaListener(topics = "document.deleted", groupId = "syncdocs-group")
     public void handleDeletedEvent(KafkaDocumentEvent event) {
+        storedEventService.storeEvent(event);
         log.info("Deleted event: doc={} user={}", event.getDocumentId(), event.getUserId());
         broadcast(event, "/topic/documents");
     }

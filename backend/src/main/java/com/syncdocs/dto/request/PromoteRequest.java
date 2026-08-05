@@ -1,6 +1,7 @@
 package com.syncdocs.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import lombok.Data;
 
 @Data
@@ -18,6 +19,7 @@ public class PromoteRequest {
 
     private String mimeType;
 
+    @Min(0)
     private long fileSize;
 
     private String originalLastModified;

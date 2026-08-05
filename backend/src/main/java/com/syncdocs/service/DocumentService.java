@@ -149,8 +149,8 @@ public class DocumentService {
     }
 
     public List<DocumentResponse> listOwn(User user) {
-        return documentRepository.findOwnedDocuments(user, DocumentStatus.ACTIVE).stream()
-                .map(doc -> toResponse(doc, null))
+        return documentRepository.findAccessibleDocuments(user, DocumentStatus.ACTIVE).stream()
+                .map(doc -> toResponse(doc, null, resolvePermissionLevel(doc, user)))
                 .toList();
     }
 
@@ -168,19 +168,20 @@ public class DocumentService {
                     document.getId(), "Renamed from '" + oldTitle + "' to '" + request.getTitle() + "'");
         }
 
-        document = documentRepository.save(document);
-
         if (request.getContent() != null) {
             byte[] content = request.getContent().getBytes(StandardCharsets.UTF_8);
             String hash = sha256(content);
 
             document.setContentHash(hash);
             document.setSize((long) content.length);
+        }
 
+        document = documentRepository.saveAndFlush(document);
+
+        if (request.getContent() != null) {
+            byte[] content = request.getContent().getBytes(StandardCharsets.UTF_8);
             String objectKey = generateObjectKey(document.getId(), document.getVersion());
             minioService.putObject(objectKey, content, document.getMimeType());
-
-            document = documentRepository.save(document);
 
             versionHistoryService.recordVersion(document.getId(), document.getVersion(),
                     user.getUsername(), "Saved: " + document.getTitle());
@@ -269,7 +270,7 @@ public class DocumentService {
                 .findByDocumentAndUser(document, user)
                 .orElseThrow(() -> new RuntimeException("Access denied"));
 
-        if (permission.getPermissionLevel().ordinal() < minimum.ordinal()) {
+        if (permission.getPermissionLevel().ordinal() > minimum.ordinal()) {
             throw new RuntimeException("Insufficient permissions");
         }
     }

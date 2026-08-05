@@ -15,7 +15,7 @@ interface SyncEditorProps {
   language?: string;
   onChange?: (value: string) => void;
   onOperation?: (op: EditorOperation) => void;
-  applyRemoteOperation?: (op: EditorOperation) => void;
+  applyRemoteOperation?: (fn: (op: EditorOperation) => void) => void;
   readonly?: boolean;
 }
 
@@ -32,6 +32,10 @@ export default function SyncEditor({
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const versionRef = useRef(version);
   const isRemoteOp = useRef(false);
+  const onOperationRef = useRef(onOperation);
+  onOperationRef.current = onOperation;
+
+  const initialValueSynced = useRef(false);
 
   useEffect(() => {
     versionRef.current = version;
@@ -65,6 +69,7 @@ export default function SyncEditor({
       for (const change of e.changes) {
         const position = change.rangeOffset;
         const op: EditorOperation = {
+          type: "INSERT",
           position,
           version: versionRef.current,
         };
@@ -76,12 +81,13 @@ export default function SyncEditor({
         } else if (change.text) {
           op.type = "INSERT";
           op.text = change.text;
+          op.length = 0;
         } else {
           op.type = "DELETE";
           op.length = change.rangeLength;
         }
 
-        onOperation?.(op);
+        onOperationRef.current?.(op);
       }
     });
 
@@ -89,6 +95,20 @@ export default function SyncEditor({
       editor.dispose();
     };
   }, []);
+
+  useEffect(() => {
+    if (initialValueSynced.current) return;
+    if (!value) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+    const model = editor.getModel();
+    if (!model) return;
+    if (value !== model.getValue()) {
+      isRemoteOp.current = true;
+      model.setValue(value);
+    }
+    initialValueSynced.current = true;
+  }, [value]);
 
   const applyOperation = useCallback((op: EditorOperation) => {
     const editor = editorRef.current;
@@ -134,5 +154,5 @@ export default function SyncEditor({
     }
   }, [applyRemoteOperation]);
 
-  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
+  return <div ref={containerRef} className="w-full h-full" />;
 }

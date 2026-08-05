@@ -12,7 +12,6 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
-import java.time.Instant;
 import java.util.Map;
 
 @Controller
@@ -36,7 +35,7 @@ public class PresenceController {
                 .eventType("USER_JOINED")
                 .documentId(documentId)
                 .userId(userId)
-                .timestamp(Instant.now())
+                .timestamp(System.currentTimeMillis())
                 .payload(Map.of("username", username, "status", "ONLINE"))
                 .build();
 
@@ -54,7 +53,7 @@ public class PresenceController {
                 .eventType("USER_LEFT")
                 .documentId(documentId)
                 .userId(userId)
-                .timestamp(Instant.now())
+                .timestamp(System.currentTimeMillis())
                 .payload(Map.of("status", "OFFLINE"))
                 .build();
 
@@ -93,7 +92,7 @@ public class PresenceController {
                 .eventType("CURSOR_UPDATE")
                 .documentId(documentId)
                 .userId(userId)
-                .timestamp(Instant.now())
+                .timestamp(System.currentTimeMillis())
                 .payload(payload)
                 .build();
 
@@ -113,7 +112,7 @@ public class PresenceController {
                 .eventType("TYPING")
                 .documentId(documentId)
                 .userId(userId)
-                .timestamp(Instant.now())
+                .timestamp(System.currentTimeMillis())
                 .payload(Map.of("typing", typing))
                 .build();
 

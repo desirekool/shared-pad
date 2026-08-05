@@ -41,48 +41,31 @@ export default function VersionPanel({ documentId, onRestore }: VersionPanelProp
   };
 
   return (
-    <div style={{ padding: 12, borderLeft: "1px solid #ccc", width: 300, overflowY: "auto" }}>
-      <h3 style={{ margin: "0 0 8px 0" }}>Version History</h3>
-      {error && <p style={{ color: "red", fontSize: 12 }}>{error}</p>}
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+    <div className="p-3 border-l border-slate-300 w-[300px] overflow-y-auto">
+      <h3 className="m-0 mb-2 text-base font-semibold">Version History</h3>
+      {error && <p className="text-red-500 text-xs">{error}</p>}
+      <ul className="list-none p-0 m-0">
         {versions.map((v) => (
           <li
             key={v.id}
-            style={{
-              padding: "6px 8px",
-              cursor: "pointer",
-              background: selectedVersion === v.versionNumber ? "#e8f4fd" : "transparent",
-              borderRadius: 4,
-              marginBottom: 2,
-            }}
+            className={`px-2 py-1.5 cursor-pointer rounded mb-0.5 ${selectedVersion === v.versionNumber ? "bg-blue-50" : "bg-transparent hover:bg-slate-50"}`}
             onClick={() => handlePreview(v.versionNumber)}
           >
-            <div style={{ fontWeight: 500, fontSize: 13 }}>{v.message}</div>
-            <div style={{ fontSize: 11, color: "#666" }}>
+            <div className="font-medium text-[13px]">{v.message}</div>
+            <div className="text-[11px] text-slate-500">
               {v.createdBy} - {new Date(v.createdAt).toLocaleString()}
             </div>
           </li>
         ))}
       </ul>
       {previewContent && (
-        <div style={{ marginTop: 12 }}>
-          <h4 style={{ margin: "0 0 4px 0", fontSize: 13 }}>Preview (v{selectedVersion})</h4>
-          <pre
-            style={{
-              fontSize: 11,
-              maxHeight: 200,
-              overflow: "auto",
-              background: "#f5f5f5",
-              padding: 8,
-              borderRadius: 4,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-all",
-            }}
-          >
+        <div className="mt-3">
+          <h4 className="m-0 mb-1 text-[13px] font-medium">Preview (v{selectedVersion})</h4>
+          <pre className="text-[11px] max-h-[200px] overflow-auto bg-slate-100 p-2 rounded whitespace-pre-wrap break-all">
             {previewContent.slice(0, 2000)}
             {previewContent.length > 2000 ? "..." : ""}
           </pre>
-          <button onClick={handleRestore} style={{ marginTop: 4, fontSize: 12 }}>
+          <button onClick={handleRestore} className="mt-1 text-xs text-blue-600 hover:text-blue-800 underline">
             Restore this version
           </button>
         </div>
