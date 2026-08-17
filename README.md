@@ -16,27 +16,27 @@ A full-stack, real-time collaborative document editor with a Monaco-based editor
 
 ## Tech Stack
 
-**Frontend** — React 19 · TypeScript 6 · Vite 7 · TanStack Router v1 · TanStack Query v5 · Monaco Editor · STOMP + SockJS · Electron 33 · Tailwind CSS 4
+**Frontend** — React 19 · TypeScript 6 · Vite 7 · TanStack Router · TanStack Query v5 · Monaco Editor · STOMP + SockJS · Electron · Tailwind CSS 4
 
-**Backend** — Spring Boot 4.1 · Java 21 · Spring Web / WebSocket / Security (JWT) / Data JPA / Validation / Actuator · Spring Kafka 4.1 (KRaft mode) · MinIO (content-addressable document storage) · PostgreSQL (metadata only) · Lombok
+**Backend** — Spring Boot 4 · Java 21 · Spring Web / WebSocket / Security (JWT) / Data JPA / Validation / Actuator · Spring Kafka 4.1 (KRaft mode) · MinIO (content-addressable document storage) · PostgreSQL (metadata only)
 
-**Infrastructure** — Docker Compose: PostgreSQL 16 · Apache Kafka 4.0 · MinIO · backend
+**Infrastructure** — Docker Compose: PostgreSQL 16 · Apache Kafka 4.0 · MinIO
 
-**Testing** — 166 backend tests (unit + integration), 0 failures / 0 flaky.
+**Testing** — unit + integration.
 
 ## Architecture
 
 ```
-┌────────────┐  STOMP/WebSocket   ┌──────────────┐  Kafka   ┌───────────────┐
-│  React app │ ◄───────────────► │ Spring Boot  │ ──────► │ Kafka (KRaft) │
+┌────────────┐  STOMP/WebSocket   ┌──────────────┐  Kafka  ┌───────────────┐
+│  React app │ ◄───────────────►  │ Spring Boot  │ ──────► │ Kafka (KRaft) │
 │  + Electron│   (raw WS + SockJS)│   backend    │ ◄────── │  event bus    │
 └────────────┘                    └──────┬───────┘         └───────────────┘
                                          │
-                                ┌────────┴────────┐
-                          ┌─────┴─────┐     ┌─────┴──────┐
+                                ┌────────┴─────────┐
+                          ┌─────┴──────┐     ┌─────┴──────┐
                           │ PostgreSQL │     │  MinIO     │
                           │ (metadata) │     │ (documents)│
-                          └───────────┘     └────────────┘
+                          └────────────┘     └────────────┘
 ```
 
 - Backend on `8080`; frontend dev server on `5173`; WebSocket at `ws://localhost:8080/ws`.
@@ -47,10 +47,7 @@ A full-stack, real-time collaborative document editor with a Monaco-based editor
 
 ### Prerequisites
 
-- Java 21+
-- Node.js 20+
-- Maven
-- Docker Desktop
+- Java 21+, Node.js 20+, Maven, Docker 
 
 ### Run everything with Docker Compose
 
